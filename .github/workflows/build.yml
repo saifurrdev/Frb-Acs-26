@@ -1,0 +1,41 @@
+name: Build Android WebView App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Install build tools
+        run: |
+          sudo apt update
+          sudo apt install -y openjdk-17-jdk android-sdk aapt apksigner
+
+      - name: Compile and build APK
+        run: |
+          mkdir -p out
+          javac -source 1.8 -target 1.8 -d out app/src/main/java/com/apars/webapp/*.java
+          wget https://raw.githubusercontent.com/Sable/android-sdk-platforms/master/android-30/android.jar -O android.jar
+          dx --dex --output=out/classes.dex out
+          aapt package -f -M app/src/main/AndroidManifest.xml -S app/src/main/res -I android.jar -F out/app.apk.unaligned out
+          aapt add out/app.apk.unaligned classes.dex
+          apksigner sign --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out out/AparsClassroom.apk out/app.apk.unaligned
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AparsClassroom
+          path: out/AparsClassroom.apk
+          
